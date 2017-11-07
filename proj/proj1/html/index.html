@@ -1,0 +1,291 @@
+<html>
+<head>
+<title>Computer Vision Project</title>
+<link href='http://fonts.googleapis.com/css?family=Nunito:300|Crimson+Text|Droid+Sans+Mono' rel='stylesheet' type='text/css'>
+<link rel="stylesheet" title="Default" href="styles/github.css">
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>  
+
+<link rel="stylesheet" href="highlighting/styles/default.css">
+<script src="highlighting/highlight.pack.js"></script>
+
+<style type="text/css">
+body {
+	margin: 0px;
+	width: 100%;
+	font-family: 'Crimson Text', serif;
+	font-size: 20px;
+	background: #fcfcfc;
+}
+h1 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 28px;
+	margin: 25px 0px 0px 0px;
+}
+
+h2 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 32px;
+	margin: 15px 0px 35px 0px;
+	color: #333;	
+	word-spacing: 3px;
+}
+
+h3 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 26px;
+	margin: 10px 0px 10px 0px;
+	color: #333;
+	word-spacing: 2px;
+}
+h4 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 22px;
+	margin: 10px 0px 10px 0px;
+	color: #333;
+	word-spacing: 2px;
+}
+
+h5 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 18px;
+	margin: 10px 0px 10px 0px;
+	color: #111;
+	word-spacing: 2px;
+}
+
+p, li {
+	color: #444;
+}
+
+a {
+	color: #DE3737;
+}
+
+.container {
+	margin: 0px auto 0px auto;
+	width: 960px;
+}
+
+#header {
+	background: #333;
+	width: 100%;
+}
+
+#headersub {
+	color: #ccc;
+	width: 960px;
+	margin: 0px auto 0px auto;
+	padding: 20px 0px 20px 0px;
+}
+
+.chart {
+	width: 480px;
+}
+.lol {
+	font-size: 16px;
+	color: #888;
+	font-style: italic;
+}
+.sep {
+	height: 1px;
+	width: 100%;
+	background: #999;
+	margin: 20px 0px 20px 0px;
+}
+.footer{
+	font-size: 16px;
+}
+.latex {
+	width: 100%;
+}
+
+.latex img {
+	display: block;
+	margin: 0px auto 0px auto;
+}
+
+pre {
+	font-family: 'Droid Sans Mono';
+	font-size: 14px;
+}
+
+td img {
+  vertical-align: middle;
+}
+
+#contents a {
+}
+</style>
+<script type="text/javascript">
+    hljs.initHighlightingOnLoad();
+</script>
+</head>
+<body>
+<div id="header" >
+<div id="headersub">
+<h1><span style="color: #DE3737">Chia-Wen Kuo</span></h1>
+</div>
+</div>
+<div class="container">
+
+<h2>Project 1: Image Filtering and Hybrid Images</h2>
+
+<h3>- Implementation</h3>
+
+<div style="float: right; padding: 10px">
+<img src="large_blur_image_dark_border.jpg" width="50%"/>
+<p align="center" style="font-size: 14px">Dark boarder problem.</p>
+</div>
+
+<h4>my_imfilter.m</h4>
+
+<p>
+This is simply a re-implementation of existing Matlab imfilter() function. Instructions for using the my_imfilter is explained in the README. In this implementation, the input image can be single-channel (greyscale), three-channel (color), or even multi-channel images (RGBD for example). By default, the input image is symmetrically padded instead of zero padded. This can avoid the dark boreder problem (see figure on the right).
+</p>
+
+<p>
+Instead of manually checking the number of channels in the image, we adopt the arithmetic expands[Ref] mechanism to make our code more concise and more efficient.
+</p>
+
+<pre><code>
+for h=1:image_size(1)
+    for w=1:image_size(2)
+        receptive_field = image_padded(h:h+2*pad_size(1), w:w+2*pad_size(2), 1:end);
+        filtered = receptive_field .* filter;
+        output(h,w,1:end) = sum(sum(filtered, 1), 2);
+    end
+end
+
+</code></pre>
+
+<p>
+Matlab's arithmetic expands mechanism is similar to Python's broadcasting mechanism. Using such mechanism, even though the filter is only a 2D matrix with single channel, it will be implicitly expanded to multiple channels. This makes our code more concise since we do not have to explicitly determine the number of channels as well as multiply the filter to each channels. Based on my experience in Python (Numpy actually), the interpreter can run the code with broadcasting more efficiently. Although there is no evidence showing that Matlab has done some optimization on arithmetic expands, I do a simple experience to show that it does run faster. It takes about 0.6 seconds compared to traditional method that takes about 0.9 seconds, on a 253x287x3 cat.bmp test image. The (probably) only drawback of this mechanism is that it is only supported after R2016b.
+</p>
+
+<p>
+[Ref] Matlab's arithmetic expands: https://blogs.mathworks.com/loren/2016/10/24/matlab-arithmetic-expands-in-r2016b/
+</p>
+
+<h4>proj1.m</h4>
+
+<p>
+This script is a simple application of our my_imfilter function. The only parameter we can tweak is the cutoff frequency of the Gaussian filter. The Gaussian filter is basically a low pass filter that blurs the image. As a result, the low-frequency image is the original image filtered by the Gaussian kernel. On the other hand, the high-frequency one is the original image minus the filtered low-frequency image. The final hybrid image is simply the addition of the low-frequency one and the high-frequency one.
+</p>
+
+<h3>- Results</h3>
+<h4>my_imfilter.m</h4>
+<p>Here are sample results from the proj1_test_filtering.m.</p>
+
+<div style="float: left; padding: 10px">
+<img src="my_imfilter_samples/identity_image.jpg" />
+<p align="center" style="font-size: 14px">Identity image.</p>
+</div>
+<div style="float: left; padding: 10px">
+<img src="my_imfilter_samples/blur_image.jpg" />
+<p align="center" style="font-size: 14px">Blurred image.</p>
+</div>
+<div style="float: left; padding: 10px">
+<img src="my_imfilter_samples/large_blur_image.jpg" />
+<p align="center" style="font-size: 14px">Large blurred image.</p>
+</div>
+<div style="float: left; padding: 10px">
+<img src="my_imfilter_samples/high_pass_image.jpg" />
+<p align="center" style="font-size: 14px">High pass image.</p>
+</div>
+<div style="float: left; padding: 10px">
+<img src="my_imfilter_samples/laplacian_image.jpg" />
+<p align="center" style="font-size: 14px">Laplacian image.</p>
+</div>
+<div style="float: left; padding: 10px">
+<img src="my_imfilter_samples/sobel_image.jpg" />
+<p align="center" style="font-size: 14px">Sobel image.</p>
+</div>
+
+<div style="clear:both" >
+<h4>proj1.m image pyramid</h4>
+
+<p>Here we show some results from the proj1.m scripts, in which the effect of a hybrid image is shown by image pyramid. We also list the cutoff frequency we tweaked for best visual effect.</p>
+
+<h5>1. Cat -> Dog, cutoff-frequency=7</h4>
+<table border=1>
+<tr>
+<td>
+<img src="cat-dog-7/hybrid_image.jpg" width="19%"/>
+<img src="cat-dog-7/high_frequencies.jpg" width="19%"/>
+<img src="cat-dog-7/low_frequencies.jpg"  width="19%"/>
+<img src="cat-dog-7/hybrid_image_scales.jpg" width="37.5%"/>
+</td>
+</tr>
+</table>
+
+<h5>2. Bird -> Plane, cutoff-frequency=9</h4>
+<table border=1>
+<tr>
+<td>
+<img src="bird-plane-9/hybrid_image.jpg" width="19%"/>
+<img src="bird-plane-9/high_frequencies.jpg" width="19%"/>
+<img src="bird-plane-9/low_frequencies.jpg"  width="19%"/>
+<img src="bird-plane-9/hybrid_image_scales.jpg" width="37.5%"/>
+</td>
+</tr>
+</table>
+
+<h5>3. Motorcycle -> Bicycle, cutoff-frequency=9</h4>
+<table border=1>
+<tr>
+<td>
+<img src="motorcycle-bicycle-9/hybrid_image.jpg" width="19%"/>
+<img src="motorcycle-bicycle-9/high_frequencies.jpg" width="19%"/>
+<img src="motorcycle-bicycle-9/low_frequencies.jpg"  width="19%"/>
+<img src="motorcycle-bicycle-9/hybrid_image_scales.jpg" width="37.5%"/>
+</td>
+</tr>
+</table>
+
+<h5>3. Fish -> Submarine, cutoff-frequency=4</h4>
+<table border=1>
+<tr>
+<td>
+<img src="fish-submarine-4/hybrid_image.jpg" width="19%"/>
+<img src="fish-submarine-4/high_frequencies.jpg"  width="19%"/>
+<img src="fish-submarine-4/low_frequencies.jpg" width="19%"/>
+<img src="fish-submarine-4/hybrid_image_scales.jpg" width="37.5%"/>
+</td>
+</tr>
+</table>
+
+<h5>3. Einstien -> Marilyn, cutoff-frequency=5</h4>
+<table border=1>
+<tr>
+<td>
+<img src="einstein-marilyn-5/hybrid_image.jpg" width="19%"/>
+<img src="einstein-marilyn-5/high_frequencies.jpg"  width="19%"/>
+<img src="einstein-marilyn-5/low_frequencies.jpg" width="19%"/>
+<img src="einstein-marilyn-5/hybrid_image_scales.jpg" width="37.5%"/>
+</td>
+</tr>
+</table>
+
+<p>
+When tuning the parameters for best visual effect, we observe some rules of thumb:
+</p>
+<ol>
+<li>Choice of cutoff frequency</li>
+<li>Choice of low and high frequency images</li>
+</ol>
+
+<p>
+For the choice of cutoff frequency, we found that when we increase the cutoff frequency, the low-frequency image will be more blurry and the high-frequency will contain more low-frequency details. This is equivalent to weighting more on the high-frequency image and down-weighting the low-frequency one. This in effect delays the show-up of the low frequency image. We choose to let the low frequency image dominate after the third or fourth level of the image pyramid. By tuning the cutoff frequency, we're shifting the border between the high-frequency and low-frequency images.
+</p>
+
+<p>
+For the choice of low and high frequency images, in additional to choosing those with high shape similarity, we also found that it is better to choose the image with large blobs of color and less details as the low frequency image and vice versa. It is intuitive since those with large blobs of color and less details intrinsically contains more low level info. As as result, by doing so, we minimize the amount of info loss after image filtering. However, this is not a deterministic factor since the final visual effect is also affected by the color, texture, shape similarity, viewing screen size, and many other complicated factors.
+</p>
+
+</body>
+</html>

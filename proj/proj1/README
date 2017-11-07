@@ -1,0 +1,16 @@
+Name: Chia-Wen Kuo
+GTID: 903319557
+
+All the codes are put inside the code directory.
+
+# output = my_imfilter(image, filter)
+Input
+    - image: can be grey or color image with arbitrary number of channels.
+    - filter: a 2x2 matrix (kernel), with odd height and width. The height and width need not be the same.
+
+How it work
+    the input image is first padded with image reflection so that the output image will be the same size as the input image.
+    The image filtering operation is just like the built-in imfilter() in Matlab.
+
+Output
+    - output: The output image is filtered by the input filter kernel and is the same size as the input image.
