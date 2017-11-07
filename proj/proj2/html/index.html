@@ -1,0 +1,286 @@
+<html>
+<head>
+<title>Computer Vision Project</title>
+<link href='http://fonts.googleapis.com/css?family=Nunito:300|Crimson+Text|Droid+Sans+Mono' rel='stylesheet' type='text/css'>
+<link rel="stylesheet" title="Default" href="styles/github.css">
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>  
+
+<link rel="stylesheet" href="highlighting/styles/default.css">
+<script src="highlighting/highlight.pack.js"></script>
+
+<style type="text/css">
+body {
+	margin: 0px;
+	width: 100%;
+	font-family: 'Crimson Text', serif;
+	font-size: 20px;
+	background: #fcfcfc;
+}
+h1 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 28px;
+	margin: 25px 0px 0px 0px;
+}
+
+h2 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 32px;
+	margin: 15px 0px 35px 0px;
+	color: #333;	
+	word-spacing: 3px;
+}
+
+h3 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 26px;
+	margin: 10px 0px 10px 0px;
+	color: #333;
+	word-spacing: 2px;
+}
+h4 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 22px;
+	margin: 10px 0px 10px 0px;
+	color: #333;
+	word-spacing: 2px;
+}
+
+h5 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 18px;
+	margin: 10px 0px 10px 0px;
+	color: #111;
+	word-spacing: 2px;
+}
+
+p, li {
+	color: #444;
+}
+
+a {
+	color: #DE3737;
+}
+
+.container {
+	margin: 0px auto 0px auto;
+	width: 960px;
+}
+
+#header {
+	background: #333;
+	width: 100%;
+}
+
+#headersub {
+	color: #ccc;
+	width: 960px;
+	margin: 0px auto 0px auto;
+	padding: 20px 0px 20px 0px;
+}
+
+.chart {
+	width: 480px;
+}
+.lol {
+	font-size: 16px;
+	color: #888;
+	font-style: italic;
+}
+.sep {
+	height: 1px;
+	width: 100%;
+	background: #999;
+	margin: 20px 0px 20px 0px;
+}
+.footer{
+	font-size: 16px;
+}
+.latex {
+	width: 100%;
+}
+
+.latex img {
+	display: block;
+	margin: 0px auto 0px auto;
+}
+
+pre {
+	font-family: 'Droid Sans Mono';
+	font-size: 14px;
+}
+
+td img {
+  vertical-align: middle;
+}
+
+#contents a {
+}
+</style>
+<script type="text/javascript">
+    hljs.initHighlightingOnLoad();
+</script>
+</head>
+<body>
+<div id="header" >
+<div id="headersub">
+<h1><span style="color: #DE3737">Chia-Wen Kuo</span></h1>
+</div>
+</div>
+<div class="container">
+
+<h2>Project 2: Local Feature Matching</h2>
+
+<h3>- Algorithm Pipeline</h3>
+
+<h4>Step1: Discrete Gaussian Space</h4>
+<p>
+The discrete Gaussian space is constructed by iteratively blurring the original image with a Gaussian kernel, and down-sampling the original image (Fig.1). The parameter n_oct (default: 5) decides how many times is the image down sampled, which forms different octaves. The parameter n_spo+2 (default: 3) decides how many times is the image filtered by a Gaussian kernel, which forms different scales in a same octave. The relationship between scale, octave, Gaussian sigma, and pixel distance is illustrated in Fig.2.</p>
+<p>The neighboring scale images within the same octave are then subtracted to form the difference of Gaussian (DoG) pyramid (Fig.1).</p>
+
+<div style="float: center; padding: 10px">
+<img src="figures/DGS.jpg" width="70%"/>
+<p align="left" style="font-size: 14px">Fig.1 left: Input images; middle: discrete Gaussian space.; right: difference of Gaussian pyramid</p>
+</div>
+<div style="float: right; padding: 10px">
+<img src="figures/scale_space_config.png" width="70%"/>
+<p align="left" style="font-size: 14px">Fig.2 The illustration of the relationship between scale, octave, Gaussian sigma, and pixel distance. The x and y axis denote sigma of the Gaussian kernel and pixel width respectively. The subscript of v denotes scale while the superscript denotes octave.</p>
+</div>
+
+<h4>Step2: Keypoint Detection & Interpolation</h4>
+<h5>Harris</h5>
+<p>The autocorrelation of image gradient and cornerness function are computed on each image of the DGS (all octaves and scales). Note that the size of the weighting window is equal to the Gaussian kernel sigma of current image(Fig.2). The cornerness map is then thresholded by 0.002 and followed by NMS to detect corner points. These corner points are further interpolated within its 2D image neighbors to further refine their position.</p>
+<h5>SIFT</h5>
+<p>The DoG map is thresholded by 0.015 and followed by NMS to detect local extrema. The image hessian for each detected keypoint is also computed to filter out those who locate on the edge. These keypoints are further interpolated within its 3D neighbor (neighboring pixel+scale) to further refine their position.</p>
+<h5>Parameters</h5>
+<p>It worth mentioning that in order to extract more keypoints, the image is actually up-sampled in the first octave. However, it is typically not used for simple cases like the Notre Dame and the Mount Rushmore. But for more difficult case like the Episcopal Gaudi, it is definitely helpful to include the first octave and thus generate more keypoints. But of course, this is a trade-off between accuracy and processing time. You can select which octave to start with by setting the global variable starting_oct in the get_interest_points function. By default it is set to 2.</p>
+
+<h4>Step3: Keypoint Orientation</h4>
+<div style="float: right; padding: 10px">
+<img src="figures/ori.png" width="100%"/>
+<p align="center" style="font-size: 14px">Fig.3 Keypoint orientation. Take lambda_ori=1.5 here.</p>
+</div>
+<p>The orientation of each keypoint is computed on a window whose size is subject to its corresponding scale (Gaussian sigma). In our case, the window size equals to 9*sigma (Fig.3). The image gradient is then computed on the corresponding image in the DGS. The histogram of gradient orientation is computed and weighted by the product of gradient magnitude and the distance to keypoint center (Gaussian weighting). The histogram is further smoothed by a circular convolutional filter. The final keypoint orientation is determined by NMS and a 0.8*max threshholding.</p>
+<p>Note that in the last NMS and thresholding step, multiple peaks may be detected. In such case , one keypoint is split into two with the same scale, octave, sigma, location, but different orientation. The orientation is further interpolated between neighboring bins to avoid the inaccuracy caused by histogram bin discretization.</p>
+
+
+<h4>Step4: Keypoint Description</h4>
+<div style="float: right; padding: 10px">
+<img src="figures/descr.png" width="100%"/>
+<p align="center" style="font-size: 14px">Fig.4 Keypoint description. Take lambda_descr=6 here.</p>
+</div>
+<p>Instead of computing the feature descriptor on a fixed feature width, the scale info extracted by the previous keypoint detection step is utilized tp determine the feature width. Specifically, the feature descriptor is computed on a window whose dimension equals to 12*sigma. The window is then rotate to align with its orientation, which is detected in step 3 (Fig. 4).</p>
+
+<p>Instead of splitting the windows into 4x4 sub windows and calculating the histogram for each sub window independently, each point will contribute to its (up to) 4 nearest sub window, The weighting is subject to the distance to the nearest sub window (bilinear) and the distance to the keypoint center (Gaussian). Furthermore, it also contributes to the nearest tow bins (linear) in the histogram of orientation. All these weighting and interpolation are for the smoothness of the feature histogram, hoping to alleviate the inaccuracy caused by discretization.</p>
+<p>The final step is to normalize the descriptor so that its l2 norm equals to 1. In order to reduce the impact of some non-linear illumination changes such as saturated regions, the descriptor is clipped to 0.2 and renormalized again.</p>
+
+<h4>Step5: Keypoint Matching</h4>
+<p>A simple ratio test between the first nearest neighbor and the second nearest neighbor is performed to filter out those ambiguous matches. The final matches are sorted by 1/d, where d equals to the distance to the first nearest neighbor.</p>
+<p>Furthermore, since the number of keypoints are in the range of 2000, a more strict strategy can be applied. Not only are the keypoints from image 1 matched against those from image 2 using ratio test, the keypoints from image 2 matched with those from image 1 are also checked. Specifically, suppose point A from image1 and point B from image2 are nearest neighbor, three distances are calcculated: d_ab(distance between A-B), d_a2(distance between A and A's 2nd nearest neighbor in image2), and d_b2(distance between B and B's 2nd nearest neighbor in image1). Both d_ab/d_a2 and d_ab/d_b2 should pass the ratio test. This further increases the accuracy by 5%~10%. We'll call this double ratio test in the rest of the report</p>
+<p>It is worth mentioning that sometime for hard test images (eg. Episcopal Gaudi), the threshold and matching strategy should be relaxed to get a full set of 100 matches.</p>
+
+<h3>- Results</h3>
+<h4>Parameters</h4>
+<p>starting_oct=2, SIFT, threshold for ratio test c_thres=0.6, use strict matching strategy of double ratio test </p>
+<div style="float: left; padding: 10px">
+<img src="result/image1_keypoints.jpg" width="100%"/>
+<p align="center" style="font-size: 14px">keypoints for image1</p>
+</div>
+<div style="float: left; padding: 10px">
+<img src="result/image2_keypoints.jpg" width="100%"/>
+<p align="center" style="font-size: 14px">keypoints for image2</p>
+</div>
+<div style="clear:both" >
+<div style="float: left; padding: 10px">
+<img src="result/eval.jpg" width="100%"/>
+<p align="center" style="font-size: 14px">evaluation=92%</p>
+</div>
+<div style="float: left; padding: 10px">
+<img src="result/vis_arrows.jpg" width="100%"/>
+<p align="center" style="font-size: 14px">vis_arrow</p>
+</div>
+<div style="clear:both" >
+
+<h3>- Ablation Test</h3>
+<h4>Scale and rotational invariance</h4>
+<h5>Scale invariance only</h5>
+<div style="float: left; padding: 10px">
+<img src="scale/1_81.jpg" width="70%"/>
+<p align="left" style="font-size: 14px">Accuracy=81%</p>
+</div>
+<div style="float: left; padding: 10px">
+<img src="scale/2_97.jpg" width="70%"/>
+<p align="left" style="font-size: 14px">Accuracy=97%</p>
+</div>
+<div style="float: left; padding: 10px">
+<img src="scale/3_20.jpg" width="70%"/>
+<p align="left" style="font-size: 14px">Accuracy=20%(need to relax ratio test threshold to 0.9 to get 100+ matches)</p>
+</div>
+
+<h5>Rotation invariance only</h5>
+<div style="float: left; padding: 10px">
+<img src="rot/1_74.jpg" width="70%"/>
+<p align="left" style="font-size: 14px">Accuracy=74%</p>
+</div>
+<div style="float: left; padding: 10px">
+<img src="rot/2_92.jpg" width="70%"/>
+<p align="left" style="font-size: 14px">Accuracy=92%</p>
+</div>
+<div style="float: left; padding: 10px">
+<img src="rot/3_2.jpg" width="70%"/>
+<p align="left" style="font-size: 14px">Accuracy=3%(need to relax ratio test threshold to 0.9 to get 100+ matches)</p>
+</div>
+
+<h5>Scale + rotation invariance</h5>
+<div style="float: left; padding: 10px">
+<img src="scale_rot/1_92.jpg" width="70%"/>
+<p align="left" style="font-size: 14px">Accuraccy=92%</p>
+</div>
+<div style="float: left; padding: 10px">
+<img src="scale_rot/2_95.jpg" width="70%"/>
+<p align="left" style="font-size: 14px">Accuraccy=95%</p>
+</div>
+<div style="float: left; padding: 10px">
+<img src="scale_rot/3_29.jpg" width="70%"/>
+<p align="left" style="font-size: 14px">Accuraccy=29%(need to relax ratio test threshold to 0.9 to get 100+ matches)</p>
+</div>
+
+<h4>Harris Corner and SIFT keypoint</h4>
+<p>*Scale and rotation invariance are enabled.</p>
+<h5>SIFT</h5>
+<p>Please refer to the results of "Scale + rotation invariance"</p>
+
+<h5>Harris</h5>
+<div style="float: left; padding: 10px">
+<img src="harris/1_100.jpg" width="70%"/>
+<p align="left" style="font-size: 14px">Accuraccy=100%</p>
+</div>
+<div style="float: left; padding: 10px">
+<img src="harris/2_100.jpg" width="70%"/>
+<p align="left" style="font-size: 14px">Accuraccy=100%</p>
+</div>
+<div style="float: left; padding: 10px">
+<img src="harris/3_61.jpg" width="70%"/>
+<p align="left" style="font-size: 14px">Accuraccy=61%(need to relax ratio test threshold to 0.9 to get 100+ matches)</p>
+</div>
+
+<h5>SIFT+Harris</h5>
+<div style="float: left; padding: 10px">
+<img src="union/1_97.jpg" width="70%"/>
+<p align="left" style="font-size: 14px">Accuraccy=97%</p>
+</div>
+<div style="float: left; padding: 10px">
+<img src="union/2_98.jpg" width="70%"/>
+<p align="left" style="font-size: 14px">Accuraccy=98%</p>
+</div>
+<div style="float: left; padding: 10px">
+<img src="union/3_65.jpg" width="70%"/>
+<p align="left" style="font-size: 14px">Accuraccy=65%(need to relax ratio test threshold to 0.9 to get 100+ matches)</p>
+</div>
+
+</body>
+</html>
