@@ -33,20 +33,19 @@ function features_neg = get_random_negative_features(non_face_scn_path, feature_
 % rgb2gray
 
 image_files = dir( fullfile( non_face_scn_path, '*.jpg' ));
-num_images = length(image_files);
 
 feature_dim = (feature_params.template_size / feature_params.hog_cell_size)^2 * 31;
 features_neg = zeros(num_samples, feature_dim);
-for i=1:num_images
-    % read and normalize image
-    filename = fullfile(image_files(i).folder, image_files(i).name);
-    I=im2single(imread(filename));
+for i=1:num_samples
+    % randomly sample negative patch image
+    I = random_sample_negative_patches(image_files, feature_params.template_size);
+    % normalize image
+    I=im2single(I);
     if size(I,3) == 3
         I=rgb2gray(I);
     end
-    Ir=imresize(I, [feature_params.template_size, feature_params.template_size]);
     % compute HoG feature
-    HoG=vl_hog(Ir, feature_params.hog_cell_size);
+    HoG=vl_hog(I, feature_params.hog_cell_size);
     features_neg(i,:) = HoG(:)';
 end
 
