@@ -35,4 +35,13 @@ image_files = dir( fullfile( train_path_pos, '*.jpg') ); %Caltech Faces stored a
 num_images = length(image_files);
 
 % placeholder to be deleted. 100 random features.
+for i=1:num_images
+    filename = fullfile(image_files(i).folder, image_files(i).name);
+    I=im2single(imread(filename));
+    if size(I,3) == 3
+        I=rgb2gray(I);
+    end
+    Ir=imresize(I, [feature_params.template_size, feature_params.template_size]);
+end
+
 features_pos = rand(100, (feature_params.template_size / feature_params.hog_cell_size)^2 * 31);
