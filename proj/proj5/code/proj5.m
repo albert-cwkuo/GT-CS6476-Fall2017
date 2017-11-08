@@ -75,7 +75,7 @@ features_neg = get_random_negative_features( non_face_scn_path, feature_params, 
 %YOU CODE classifier training. Make sure the outputs are 'w' and 'b'.
 lambda = 0.0001;
 X=[features_pos; features_neg]';
-Y=[ones(1, size(features_pos,1)), ones(1, size(features_neg,1))];
+Y=[ones(1, size(features_pos,1)), -ones(1, size(features_neg,1))];
 [w, b] = vl_svmtrain(X, Y, lambda);
 
 %% step 3. Examine learned classifier
