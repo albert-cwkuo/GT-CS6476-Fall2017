@@ -34,14 +34,19 @@ function features_pos = get_positive_features(train_path_pos, feature_params)
 image_files = dir( fullfile( train_path_pos, '*.jpg') ); %Caltech Faces stored as .jpg
 num_images = length(image_files);
 
-% placeholder to be deleted. 100 random features.
+feature_dim = (feature_params.template_size / feature_params.hog_cell_size)^2 * 31;
+features_pos = zeros(num_images, feature_dim);
 for i=1:num_images
+    % read and normalize image
     filename = fullfile(image_files(i).folder, image_files(i).name);
     I=im2single(imread(filename));
     if size(I,3) == 3
         I=rgb2gray(I);
     end
     Ir=imresize(I, [feature_params.template_size, feature_params.template_size]);
+    % compute HoG feature
+    HoG=vl_hog(Ir, feature_params.hog_cell_size);
+    features_pos(i,:) = HoG(:)';
 end
 
-features_pos = rand(100, (feature_params.template_size / feature_params.hog_cell_size)^2 * 31);
+end
