@@ -47,11 +47,11 @@ thres = -1.0;
 test_scenes = dir( fullfile( test_scn_path, '*.jpg' ));
 
 %initialize these as empty and incrementally expand them.
-bboxes = zeros(0,4);
-confidences = zeros(0,1);
-image_ids = cell(0,1);
+bboxes = cell(length(test_scenes),1);
+confidences = cell(length(test_scenes),1);
+image_ids = cell(length(test_scenes),1);
 
-for i = 1:length(test_scenes)
+parfor i = 1:length(test_scenes)
     fprintf('Detecting faces in %s\n', test_scenes(i).name)
     img = imread( fullfile( test_scn_path, test_scenes(i).name ));
     img = single(img)/255;
@@ -106,10 +106,13 @@ for i = 1:length(test_scenes)
     cur_bboxes      = cur_bboxes(     is_maximum,:);
     cur_image_ids   = cur_image_ids(  is_maximum,:);
     % collect all results
-    bboxes      = [bboxes;      cur_bboxes];
-    confidences = [confidences; cur_confidences];
-    image_ids   = [image_ids;   cur_image_ids];
+    bboxes{i} = cur_bboxes;
+    confidences{i} = cur_confidences;
+    image_ids{i} = cur_image_ids;
 end
+bboxes = cell2mat(bboxes);
+confidences = cell2mat(confidences);
+image_ids = vertcat(image_ids{:});
 end
 
 

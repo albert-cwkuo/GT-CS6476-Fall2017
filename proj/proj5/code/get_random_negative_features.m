@@ -36,7 +36,7 @@ image_files = dir( fullfile( non_face_scn_path, '*.jpg' ));
 
 feature_dim = (feature_params.template_size / feature_params.hog_cell_size)^2 * 31;
 features_neg = zeros(num_samples, feature_dim);
-for i=1:num_samples
+parfor i=1:num_samples
     % randomly sample negative patch image
     I = random_sample_negative_patches(image_files, feature_params.template_size);
     % normalize image

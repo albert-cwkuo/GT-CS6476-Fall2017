@@ -36,7 +36,7 @@ num_images = length(image_files);
 
 feature_dim = (feature_params.template_size / feature_params.hog_cell_size)^2 * 31;
 features_pos = zeros(num_images, feature_dim);
-for i=1:num_images
+parfor i=1:num_images
     % read and normalize image
     filename = fullfile(image_files(i).folder, image_files(i).name);
     I=im2single(imread(filename));
