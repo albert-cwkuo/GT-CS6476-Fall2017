@@ -41,6 +41,9 @@ function [bboxes, confidences, image_ids] = ....
 % on the side of having a low confidence threshold (even less than zero) to
 % achieve high enough recall.
 
+% SVM confidence threshold
+thres = -1.0;
+
 test_scenes = dir( fullfile( test_scn_path, '*.jpg' ));
 
 %initialize these as empty and incrementally expand them.
@@ -49,7 +52,6 @@ confidences = zeros(0,1);
 image_ids = cell(0,1);
 
 for i = 1:length(test_scenes)
-      
     fprintf('Detecting faces in %s\n', test_scenes(i).name)
     img = imread( fullfile( test_scn_path, test_scenes(i).name ));
     img = single(img)/255;
@@ -57,13 +59,41 @@ for i = 1:length(test_scenes)
         img = rgb2gray(img);
     end
     
-    %You can delete all of this below.
-    % Let's create 15 random detections per image
-    cur_x_min = rand(15,1) * size(img,2);
-    cur_y_min = rand(15,1) * size(img,1);
-    cur_bboxes = [cur_x_min, cur_y_min, cur_x_min + rand(15,1) * 50, cur_y_min + rand(15,1) * 50];
-    cur_confidences = rand(15,1) * 4 - 2; %confidences in the range [-2 2]
-    cur_image_ids(1:15,1) = {test_scenes(i).name};
+    % compute HoG ove the whole image
+    HoG=vl_hog(img, feature_params.hog_cell_size);
+    height=size(HoG,1);
+    weight=size(HoG,2);
+    d=feature_params.template_size/feature_params.hog_cell_size;
+    fd=d^2*31;
+    cell_w=weight-d+1;
+    cell_h=height-d+1;
+    num_cell=cell_w*cell_h;
+    HoG_cell = zeros(num_cell, fd);
+    cur_bboxes = zeros(num_cell, 4);
+    cur_image_ids = cell(num_cell,1);
+    for x=1:cell_w
+        for y=1:cell_h
+            % HoG cell feature
+            HoG_cell_xy = HoG(y:y+d-1,x:x+d-1,:);
+            ind=y+(x-1)*cell_h;
+            HoG_cell(ind,:)=HoG_cell_xy(:)';
+            % cell bbox
+            xmin=(x-1)*d+1;
+            xmax=xmin+feature_params.template_size-1;
+            ymin=(y-1)*d+1;
+            ymax=ymin+feature_params.template_size-1;
+            cur_bboxes(ind,:)=[xmin,ymin,xmax,ymax];
+            % image id
+            cur_image_ids{ind}=test_scenes(i).name;
+        end
+    end
+    % confidence for each sliding window
+    cur_confidences=HoG_cell*w+b;
+    % filter out those confidence < thres
+    hit = cur_confidences > thres;
+    cur_bboxes = cur_bboxes(hit,:);
+    cur_confidences = cur_confidences(hit,:);
+    cur_image_ids = cur_image_ids(hit,:);
     
     %non_max_supr_bbox can actually get somewhat slow with thousands of
     %initial detections. You could pre-filter the detections by confidence,
@@ -72,14 +102,14 @@ for i = 1:length(test_scenes)
     %can get higher recall with a lower threshold. You don't need to modify
     %anything in non_max_supr_bbox, but you can.
     [is_maximum] = non_max_supr_bbox(cur_bboxes, cur_confidences, size(img));
-
     cur_confidences = cur_confidences(is_maximum,:);
     cur_bboxes      = cur_bboxes(     is_maximum,:);
     cur_image_ids   = cur_image_ids(  is_maximum,:);
- 
+    % collect all results
     bboxes      = [bboxes;      cur_bboxes];
     confidences = [confidences; cur_confidences];
     image_ids   = [image_ids;   cur_image_ids];
+end
 end
 
 
