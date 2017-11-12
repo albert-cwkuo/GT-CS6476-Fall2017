@@ -34,10 +34,9 @@ function features_pos = get_positive_features(train_path_pos, feature_params)
 image_files = dir( fullfile( train_path_pos, '*.jpg') ); %Caltech Faces stored as .jpg
 num_images = length(image_files);
 
-% HoG feature
 feature_dim = (feature_params.template_size / feature_params.hog_cell_size)^2 * 31;
-features_hog = zeros(num_images, feature_dim);
-for i=1:num_images
+features_pos = zeros(num_images, feature_dim);
+parfor i=1:num_images
     % read and normalize image
     filename = fullfile(image_files(i).folder, image_files(i).name);
     I=im2single(imread(filename));
@@ -47,44 +46,7 @@ for i=1:num_images
     Ir=imresize(I, [feature_params.template_size, feature_params.template_size]);
     % compute HoG feature
     HoG=vl_hog(Ir, feature_params.hog_cell_size);
-    features_hog(i,:) = HoG(:)';
+    features_pos(i,:) = HoG(:)';
 end
-
-% GIST feature
-% Parameters for GIST feature
-% Ref: http://people.csail.mit.edu/torralba/code/spatialenvelope/
-clear param
-param.imageSize = [64 64]; % it works also with non-square images
-param.orientationsPerScale = [8 8 8 8];
-param.numberBlocks = 4;
-param.fc_prefilt = 4;
-
-feature_dim = sum(param.orientationsPerScale)*param.numberBlocks^2;
-features_gist = zeros(num_images, feature_dim);
-
-% pre-compute gist
-% read and normalize image
-filename = fullfile(image_files(1).folder, image_files(1).name);
-I=im2double(imread(filename));
-if size(I,3) == 3
-    I=rgb2gray(I);
-end
-Ir=imresize(I, [64, 64]);
-[gist, param] = LMgist(Ir, '', param);
-features_gist(1,:) = gist;
-
-parfor i=2:num_images
-    filename = fullfile(image_files(i).folder, image_files(i).name);
-    I=im2double(imread(filename));
-    if size(I,3) == 3
-        I=rgb2gray(I);
-    end
-    Ir=imresize(I, [64, 64]);
-    [gist, ~] = LMgist(Ir, '', param);
-    features_gist(i,:) = gist;
-end
-
-% concatenate HoG and GIST features
-features_pos = horzcat(features_hog,features_gist);
 
 end
