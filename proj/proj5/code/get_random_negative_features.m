@@ -35,7 +35,7 @@ function features_neg = get_random_negative_features(non_face_scn_path, feature_
 image_files = dir( fullfile( non_face_scn_path, '*.jpg' ));
 
 feature_dim = (feature_params.template_size / feature_params.hog_cell_size)^2 * 31;
-features_neg = zeros(num_samples, feature_dim);
+features_hog = zeros(num_samples, feature_dim);
 parfor i=1:num_samples
     % randomly sample negative patch image
     I = random_sample_negative_patches(image_files, feature_params.template_size);
@@ -46,7 +46,45 @@ parfor i=1:num_samples
     end
     % compute HoG feature
     HoG=vl_hog(I, feature_params.hog_cell_size);
-    features_neg(i,:) = HoG(:)';
+    features_hog(i,:) = HoG(:)';
 end
+
+% GIST feature
+% Parameters for GIST feature
+% Ref: http://people.csail.mit.edu/torralba/code/spatialenvelope/
+clear param
+param.imageSize = [64 64]; % it works also with non-square images
+param.orientationsPerScale = [8 8 8 8];
+param.numberBlocks = 4;
+param.fc_prefilt = 4;
+
+feature_dim = sum(param.orientationsPerScale)*param.numberBlocks^2;
+features_gist = zeros(num_samples, feature_dim);
+
+% pre-compute gist
+% read and normalize image
+% randomly sample negative patch image
+I = random_sample_negative_patches(image_files, feature_params.template_size);
+I=im2double(I);
+if size(I,3) == 3
+    I=rgb2gray(I);
+end
+Ir=imresize(I, [64, 64]);
+[gist, param] = LMgist(Ir, '', param);
+features_gist(1,:) = gist;
+
+parfor i=2:num_samples
+    I = random_sample_negative_patches(image_files, feature_params.template_size);
+    I=im2double(I);
+    if size(I,3) == 3
+        I=rgb2gray(I);
+    end
+    Ir=imresize(I, [64, 64]);
+    [gist, ~] = LMgist(Ir, '', param);
+    features_gist(i,:) = gist;
+end
+
+% concatenate HoG and GIST features
+features_neg = horzcat(features_hog,features_gist);
 
 end
