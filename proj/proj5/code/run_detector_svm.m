@@ -5,7 +5,7 @@
 % wrong). The non-maximum suppression is done on a per-image basis. The
 % starter code includes a call to a provided non-max suppression function.
 function [bboxes, confidences, image_ids] = .... 
-    run_detector(test_scn_path, w, b, feature_params)
+    run_detector_svm(test_scn_path, w, b, feature_params)
 % 'test_scn_path' is a string. This directory contains images which may or
 %    may not have faces in them. This function should work for the MIT+CMU
 %    test set but also for any other images (e.g. class photos)
@@ -60,10 +60,11 @@ image_ids = cell(num_proposals,1);
 parfor i = 1:length(test_scenes)
     fprintf('Detecting faces in %s\n', test_scenes(i).name)
     img = imread( fullfile( test_scn_path, test_scenes(i).name ));
-    img = single(img)/255;
+    img = single(img);
     if(size(img,3) > 1)
         img = rgb2gray(img);
     end
+    [img_h, img_w] = size(img);
     
     % loop over different scales
     bboxes_scale = cell(num_scales+1,1);
@@ -91,10 +92,10 @@ parfor i = 1:length(test_scenes)
                 ind=y+(x-1)*cell_h;
                 HoG_cell(ind,:)=HoG_cell_xy(:)';
                 % cell bbox
-                xmin=round((x-1)*feature_params.hog_cell_size/scale)+1;
-                xmax=xmin+round(feature_params.template_size/scale)-1;
-                ymin=round((y-1)*feature_params.hog_cell_size/scale)+1;
-                ymax=ymin+round(feature_params.template_size/scale)-1;
+                xmin=floor((x-1)*feature_params.hog_cell_size/scale)+1;
+                xmax=min(img_w, xmin+floor(feature_params.template_size/scale)-1);
+                ymin=floor((y-1)*feature_params.hog_cell_size/scale)+1;
+                ymax=min(img_h, ymin+floor(feature_params.template_size/scale)-1);
                 cur_bboxes(ind,:)=[xmin,ymin,xmax,ymax];
                 % image id
                 cur_image_ids{ind}=test_scenes(i).name;
