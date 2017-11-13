@@ -5,7 +5,7 @@
 % mirroring or warping the positive training examples to augment your
 % training data.
 
-function features_pos = get_positive_features(train_path_pos, feature_params)
+function features_pos = get_positive_features(train_path_pos, feature_params, alexnet)
 % 'train_path_pos' is a string. This directory contains 36x36 images of
 %   faces
 % 'feature_params' is a struct, with fields
@@ -35,7 +35,8 @@ image_files = dir( fullfile( train_path_pos, '*.jpg') ); %Caltech Faces stored a
 num_images = length(image_files);
 
 feature_dim = (feature_params.template_size / feature_params.hog_cell_size)^2 * 31;
-features_pos = zeros(num_images, feature_dim);
+features_hog = zeros(num_images, feature_dim);
+images = zeros(227,227,3,num_images);
 parfor i=1:num_images
     % read and normalize image
     filename = fullfile(image_files(i).folder, image_files(i).name);
@@ -46,7 +47,30 @@ parfor i=1:num_images
     Ir=imresize(I, [feature_params.template_size, feature_params.template_size]);
     % compute HoG feature
     HoG=vl_hog(Ir, feature_params.hog_cell_size);
-    features_pos(i,:) = HoG(:)';
+    features_hog(i,:) = HoG(:)';
+    % collect images for alexnet
+    Ir=imresize(Ir,[227,227]);
+    Ir=cat(3,Ir,Ir,Ir);
+    images(:,:,:,i)=Ir;
+end
+
+if alexnet
+% compute AlexNet feature
+net = alexnet;
+reset(gpuDevice(1));
+% split it into serveral pieces to avoid out of memory problem
+split_size = 1024;
+features_alex = zeros(num_images, 4096);
+for i=1:split_size:num_images-split_size
+    alex=activations(net,images(:,:,:,i:i+split_size-1),'fc7');
+    features_alex(i:i+split_size-1,:)=alex;
+end
+alex=activations(net,images(:,:,:,i+split_size:end),'fc7');
+features_alex(i+split_size:end,:)=alex;
+
+features_pos = horzcat(features_hog, features_alex);
+else
+    features_pos =features_hog;
 end
 
 end
