@@ -53,17 +53,19 @@ label_path = fullfile(data_path,'test_scenes/ground_truth_bboxes.txt'); %the gro
 %parameters such as the number of orientations, but that does not help
 %performance in our limited test.
 feature_params = struct('template_size', 36, 'hog_cell_size', 3);
-
+feature_dim = (feature_params.template_size / feature_params.hog_cell_size)^2 * 31;
 
 %% Step 1. Load positive training crops and random negative examples
 %YOU CODE 'get_positive_features' and 'get_random_negative_features'
+alexnet=false;
+tic;
+features_pos = get_positive_features( train_path_pos, feature_params, alexnet );
+toc;
 
-features_pos = get_positive_features( train_path_pos, feature_params );
-
-num_negative_examples = 100000; %Higher will work strictly better, but you should start with 10000 for debugging
-features_neg = get_random_negative_features( non_face_scn_path, feature_params, num_negative_examples);
-
-    
+tic;
+num_negative_examples = 10000; %Higher will work strictly better, but you should start with 10000 for debugging
+features_neg = get_random_negative_features( non_face_scn_path, feature_params, num_negative_examples, alexnet);
+toc;
 %% step 2. Train Classifier
 % Use vl_svmtrain on your training features to get a linear classifier
 % specified by 'w' and 'b'
@@ -73,10 +75,13 @@ features_neg = get_random_negative_features( non_face_scn_path, feature_params, 
 % work best e.g. 0.0001, but you can try other values
 
 %YOU CODE classifier training. Make sure the outputs are 'w' and 'b'.
-lambda = 0.0001;
-X=[features_pos; features_neg]';
+lambda = 0.00001;
+X=[features_pos; features_neg];
 Y=[ones(1, size(features_pos,1)), -ones(1, size(features_neg,1))];
-[w, b] = vl_svmtrain(X, Y, lambda);
+[w, b] = vl_svmtrain(X', Y, lambda);
+
+% train random forest classifier
+% rfc = TreeBagger(50,X,num2str(Y'),'Method','classification');
 
 %% step 3. Examine learned classifier
 % You don't need to modify anything in this section. The section first
@@ -102,8 +107,8 @@ hold off;
 
 % Visualize the learned detector. This would be a good thing to include in
 % your writeup!
-n_hog_cells = sqrt(length(w) / 31); %specific to default HoG parameters
-imhog = vl_hog('render', single(reshape(w, [n_hog_cells n_hog_cells 31])), 'verbose') ;
+n_hog_cells = sqrt(length(w(1:feature_dim)) / 31); %specific to default HoG parameters
+imhog = vl_hog('render', single(reshape(w(1:feature_dim), [n_hog_cells n_hog_cells 31])), 'verbose') ;
 figure(3); imagesc(imhog) ; colormap gray; set(3, 'Color', [.988, .988, .988])
 
 pause(0.1) %let's ui rendering catch up
@@ -112,8 +117,7 @@ hog_template_image = frame2im(getframe(3));
 % grab foreground windows instead of the figure in question. It could also
 % return a partial image.
 imwrite(hog_template_image, 'visualizations/hog_template.png')
-    
- 
+
 %% step 4. (optional extra credit) Mine hard negatives
 % Mining hard negatives is graduate credit / extra credit. You can get very
 % good performance by using random negatives, so hard negative mining is
@@ -129,8 +133,12 @@ imwrite(hog_template_image, 'visualizations/hog_template.png')
 % YOU CODE 'run_detector'. Make sure the outputs are properly structured!
 % They will be interpreted in Step 6 to evaluate and visualize your
 % results. See run_detector.m for more details.
-[bboxes, confidences, image_ids] = run_detector(test_scn_path, w, b, feature_params);
-
+tic;
+[bboxes, confidences, image_ids] = run_detector_svm(test_scn_path, w, b, feature_params);
+%[bboxes, confidences, image_ids] = run_detector_rfc(test_scn_path, rfc, feature_params);
+%[bboxes, confidences, image_ids] = run_detector_cascade(test_scn_path, w, b, rfc, feature_params);
+%[bboxes, confidences, image_ids] = run_detector_svm_alex(test_scn_path, w, b, feature_params);
+toc;
 % run_detector will have (at least) two parameters which can heavily
 % influence performance -- how much to rescale each step of your multiscale
 % detector, and the threshold for a detection. If your recall rate is low

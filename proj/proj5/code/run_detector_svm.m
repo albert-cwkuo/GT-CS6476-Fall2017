@@ -42,7 +42,7 @@ function [bboxes, confidences, image_ids] = ....
 % achieve high enough recall.
 
 % SVM confidence threshold
-thres = -0.1;
+thres = 0.8;
 
 % scales
 scale_factor = 0.8;
@@ -60,7 +60,7 @@ image_ids = cell(num_proposals,1);
 parfor i = 1:length(test_scenes)
     fprintf('Detecting faces in %s\n', test_scenes(i).name)
     img = imread( fullfile( test_scn_path, test_scenes(i).name ));
-    img = single(img);
+    img = im2single(img);
     if(size(img,3) > 1)
         img = rgb2gray(img);
     end

@@ -5,7 +5,7 @@
 % wrong). The non-maximum suppression is done on a per-image basis. The
 % starter code includes a call to a provided non-max suppression function.
 function [bboxes, confidences, image_ids] = .... 
-    run_detector_rfc(test_scn_path, rfc, feature_params)
+    run_detector_cascade(test_scn_path, w, b, rfc, feature_params)
 % 'test_scn_path' is a string. This directory contains images which may or
 %    may not have faces in them. This function should work for the MIT+CMU
 %    test set but also for any other images (e.g. class photos)
@@ -41,13 +41,18 @@ function [bboxes, confidences, image_ids] = ....
 % on the side of having a low confidence threshold (even less than zero) to
 % achieve high enough recall.
 
-% rfc confidence threshold
-thres = 0.5;
+%% svm classifier
+% SVM confidence threshold
+svm_thres = -0.2;
 
 % scales
 scale_factor = 0.8;
 final_scale = 0.2;
 num_scales = ceil(log(final_scale)/log(scale_factor));
+
+% HoG params
+d=feature_params.template_size/feature_params.hog_cell_size;
+fd=d^2*31;
 
 test_scenes = dir( fullfile( test_scn_path, '*.jpg' ));
 
@@ -60,7 +65,7 @@ image_ids = cell(num_proposals,1);
 parfor i = 1:length(test_scenes)
     fprintf('Detecting faces in %s\n', test_scenes(i).name)
     img = imread( fullfile( test_scn_path, test_scenes(i).name ));
-    img = im2single(img);
+    img = single(img);
     if(size(img,3) > 1)
         img = rgb2gray(img);
     end
@@ -77,15 +82,12 @@ parfor i = 1:length(test_scenes)
         HoG=vl_hog(img_s, feature_params.hog_cell_size);
         height=size(HoG,1);
         width=size(HoG,2);
-        d=feature_params.template_size/feature_params.hog_cell_size;
-        fd=d^2*31;
         cell_w=width-d+1;
         cell_h=height-d+1;
         num_cell=cell_w*cell_h;
         HoG_cell = zeros(num_cell, fd);
         cur_bboxes = zeros(num_cell, 4);
         cur_image_ids = cell(num_cell,1);
-        cur_confidences = zeros(num_cell,1);
         for x=1:cell_w
             for y=1:cell_h
                 % HoG cell feature
@@ -102,17 +104,10 @@ parfor i = 1:length(test_scenes)
                 cur_image_ids{ind}=test_scenes(i).name;
             end
         end
-        % predict rfc score
-        % split it into serveral pieces to avoid out of memory problem
-        split_size = 10000;
-        for k=1:split_size:num_cell-split_size
-            [~, scores] = predict(rfc,HoG_cell(k:k+split_size-1,:));
-            cur_confidences(k:k+split_size-1,1)=scores(:,2);
-        end
-        [~, scores] = predict(rfc,HoG_cell(k+split_size:end,:));
-        cur_confidences(k+split_size:end,1)=scores(:,2);
+        % confidence for each sliding window
+        cur_confidences=HoG_cell*w+b;
         % filter out those confidence < thres
-        hit = cur_confidences > thres;
+        hit = cur_confidences > svm_thres;
         cur_bboxes = cur_bboxes(hit,:);
         cur_confidences = cur_confidences(hit,:);
         cur_image_ids = cur_image_ids(hit,:);
@@ -140,9 +135,38 @@ parfor i = 1:length(test_scenes)
     confidences{i} = confidences_scale;
     image_ids{i} = image_ids_scale;
 end
-bboxes = cell2mat(bboxes);
-confidences = cell2mat(confidences);
-image_ids = vertcat(image_ids{:});
+bboxes_svm = cell2mat(bboxes);
+confidences_svm = cell2mat(confidences);
+image_ids_svm = vertcat(image_ids{:});
+
+%% rfc classifier
+rfc_thres = 0.4;
+num_proposals = size(bboxes_svm,1);
+patches_hog = zeros(num_proposals,fd);
+% extract HoG for each detected patch
+parfor i=1:num_proposals
+    img = imread(fullfile(test_scn_path, image_ids_svm{i}));
+    img = im2single(img);
+    if(size(img,3) > 1)
+        img = rgb2gray(img);
+    end
+    xmin=bboxes_svm(i,1);
+    ymin=bboxes_svm(i,2);
+    xmax=bboxes_svm(i,3);
+    ymax=bboxes_svm(i,4);
+    patch = imresize(img(ymin:ymax,xmin:xmax),[feature_params.template_size,feature_params.template_size]);
+    HoG=vl_hog(patch, feature_params.hog_cell_size);
+    patches_hog(i,:)=HoG(:)';
+end
+% compute scores
+[~,scores] = predict(rfc,patches_hog);
+confidences=scores(:,2);
+% filter out those confidence < thres
+hit = confidences > rfc_thres;
+bboxes = bboxes_svm(hit,:);
+confidences = confidences_svm(hit,:);
+image_ids = image_ids_svm(hit,:);
+
 end
 
 
