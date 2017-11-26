@@ -1,2 +1,4 @@
 *.m~
 proj/proj5/code/visualizations/
+proj/proj6/matconvnet-1.0-beta25
+proj/proj6/imagenet-vgg-f.mat
