@@ -65,4 +65,8 @@ for set = 1:length(sets)
     end
 end
 
+m=mean(imdb.images.data(:));
+s=std(imdb.images.data(:));
+
+imdb.images.data=(imdb.images.data-m)/s;
 
