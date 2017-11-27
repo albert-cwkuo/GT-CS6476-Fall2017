@@ -14,17 +14,17 @@ opts.expDir = fullfile('..','data','part1') ;
 
 %opts.batchSize is the number of training images in each batch. You don't
 %need to modify this.
-opts.batchSize = 50 ;
+opts.batchSize = 32 ;
 
 % opts.learningRate is a critical parameter that can dramatically affect
 % whether training succeeds or fails. For most of the experiments in this
 % project the default learning rate is safe.
-opts.learningRate = 0.008 ;
+opts.learningRate = logspace(-2, -3, 50);
 
 % opts.numEpochs is the number of epochs. If you experiment with more
 % complex networks you might need to increase this. Likewise if you add
 % regularization that slows training.
-opts.numEpochs = 50 ;
+opts.numEpochs = 500 ;
 
 % % An example of learning rate decay as an alternative to the fixed learning
 % % rate used by default. This isn't necessary but can lead to better
@@ -97,8 +97,29 @@ labels = imdb.images.labels(1,batch) ;
 
 num_imgs = size(im,4);
 for i=1:num_imgs
+    % flip image
     if randi([0,1])
         im(:,:,:,i) = fliplr(im(:,:,:,i));
+    end
+%     % random blur image
+%     if randi([0,1])
+%         s=abs(2*randn());
+%         im(:,:,:,i) = imgaussfilt(im(:,:,:,i), s);
+%     end
+    % rotate image
+    if randi([0,1])
+        deg = 2*randn();
+        im_r = imRotateCrop(im(:,:,:,i), deg, 'bilinear', 'AspectRatio', 'same');
+        im(:,:,:,i) = imresize(im_r, [64,64]);
+    end
+    % random crop image
+    if randi([0,1])
+        ratio = max(1-abs(0.6*randn()), 0.8);
+        d = floor(64*ratio);
+        x = min(floor((64-d)*rand()),1);
+        y = min(floor((64-d)*rand()),1);
+        
+        im(:,:,:,i) = imresize(imcrop(im(:,:,:,i), [x,y,d,d]), [64,64]);
     end
 end
 
